@@ -37,6 +37,11 @@ else:
     input_poutcome_success = 0
 
 
+duration = st.sidebar.number_input('How long did the last interaction last? (seconds)',
+                                   value=None)
+
+job = 
+
 
 
 
