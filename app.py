@@ -1,7 +1,9 @@
 import streamlit as st
 import joblib
+import json
 import pandas as pd
 from google import genai
+from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import os
 
@@ -13,17 +15,12 @@ api_token = os.getenv('api_key')
 if not api_token:
     raise ValueError("No API token found. Check your .env file.")
 
-# # llm = ChatGoogleGenerativeAI(
-# #     model="gemini-2.0-flash",
-# #     api_key=api_token
-# #     )
+# client = genai.Client(api_key=api_token)
 
-client = genai.Client(api_key=api_token)
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash",
-    contents="Explain how AI works in a few words",
-)
+# response = client.models.generate_content(
+#     model="gemini-2.5-flash",
+#     contents="Explain how AI works in a few words",
+# )
 
 ######## CALL NECESSARY FILES ########
 
@@ -111,12 +108,94 @@ user_input = pd.DataFrame({'duration':[duration],
                            'previous':[previous]
                            })
 
-######## MODELING ########
+######## ML PREDICTION ########
 
+# if pred_button:
+#     y_pred = model.predict(user_input)[0]
+#     y_proba = model.predict_proba(user_input)[0][1]
+#     if y_pred == 1:
+#         st.write("This customer is likely to subscribe")
+#     else:
+#         st.write("This customer is unlikely to subscribe")
+
+######## LLM EXPLAINER ########
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    api_key=api_token
+    )
+
+system_instruction = """
+You are an AI assistant helping a bank’s marketing team understand a predictive model for term deposit subscription.
+The model outputs a probability that a customer will subscribe.
+Your job is to:
+
+Explain in simple, non-technical language why the model predicted this outcome.
+
+Suggest 3–5 concrete actions the bank staff could take next (channel, timing, offer).
+
+Be concise, structured, and avoid exposing internal model details (no weights, no probabilities unless provided).
+"""
+
+top_features = [
+    {
+        "name": row["feature"],
+        "importance": float(row["importance"])
+    }
+    for _, row in feat_imp.iterrows()
+]
+
+# === PREDICTION + LLM FLOW ===
 if pred_button:
+    # ---- ML prediction ----
     y_pred = model.predict(user_input)[0]
-    y_proba = model.predict_proba(user_input)[0][1]
+    y_proba = float(model.predict_proba(user_input)[0][1])
+
     if y_pred == 1:
-        st.write("This customer is likely to subscribe")
+        st.success(f"This customer is likely to subscribe. Probability: {y_proba:.2f}")
     else:
-        st.write("This customer is unlikely to subscribe")
+        st.warning(f"This customer is unlikely to subscribe. Probability: {y_proba:.2f}")
+
+    # ---- Build ml_output payload for LLM ----
+    ml_output = {
+        "prediction": int(y_pred),  # 0 or 1
+        "prediction_label": "subscribe" if y_pred == 1 else "not_subscribe",
+        "probability": y_proba,
+
+        "top_features": top_features,
+
+        "input_features": {
+            "poutcome_success": int(poutcome_success),
+            "duration": float(duration),
+            "job_edu": float(job_edu),  # already encoded
+            "was_contacted_before": int(was_contacted_before),
+            "contact_cellular": int(contact_cellular),
+            "balance": float(balance),
+            "previous": int(previous),
+            # If you have campaign as a separate feature, add:
+            # "campaign": int(campaign),
+        },
+    }
+
+    ml_output_json = json.dumps(ml_output, ensure_ascii=False)
+
+    # ---- LLM explainer ----
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        api_key=api_token,
+        temperature=0.3,
+    )
+
+    messages = [
+        ("system", system_instruction),
+        (
+            "human",
+            "Here is the model output for a customer in JSON format:\n\n"
+            f"{ml_output_json}\n\n"
+            "Based on this, explain in simple terms why the model thinks this customer will or "
+            "will not subscribe, and suggest 3–5 concrete marketing actions the bank could take."
+        ),
+    ]
+
+    ai_msg = llm.invoke(messages)
+    st.subheader("LLM Explanation & Recommendations")
+    st.write(ai_msg.content)
