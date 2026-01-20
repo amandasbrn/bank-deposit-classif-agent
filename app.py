@@ -35,8 +35,11 @@ feat_imp = pd.read_csv('adaboost_feature_imp.csv')
 data = pd.read_csv('data_model.csv')
 
 ######## SETUP STREAMLIT ########
-st.header('Bank Deposit Subscription Prediction + LLM Explainer')
-st.markdown("AI-based Subscription Predictor")
+st.header('🏦 AI-Powered Marketing Decision Support for Bank Deposits')
+st.markdown("""
+            *💬 An end-to-end AI system that predicts customer subscription likelihood, selects outreach actions using rule-based agent logic, and explains decisions using a large language model.
+Built to reflect real-world banking workflows, focusing on clarity, urgency, and operational impact.*
+            """)
 st.divider()
 
 ######## STREAMLIT INTERFACE ########
@@ -125,18 +128,23 @@ llm = ChatGoogleGenerativeAI(
     )
 
 system_instruction = """
-You are an AI assistant helping a bank’s marketing team understand a predictive system for term deposit subscription.
+You are an AI assistant supporting a bank’s marketing operations team.
 
 The outreach action has ALREADY been selected by a decision agent.
 You must NOT change or suggest a different action.
 
-Your job is to:
-- Explain in simple, non-technical language why this action was chosen
-- Support the agent’s decision using customer context and model output
-- Provide 3–5 concrete execution tips that align with the chosen action
+Your role is to:
+- Briefly explain why this action was chosen (1–2 sentences)
+- Provide concise, action-oriented execution guidance
 
-Be concise, structured, and avoid exposing internal model details.
+Style rules:
+- Write for busy professionals
+- Use short, direct sentences
+- Focus on what to do and when
+- Avoid unnecessary background or storytelling
+- No emojis, no marketing fluff
 """
+
 
 top_features = [
     {
@@ -228,13 +236,24 @@ if pred_button:
     )
 
     messages = [
-        ("system", system_instruction),
-        (
-            "human",
-            "Below is the output from a predictive system and a decision agent.\n\n"
-            f"{ml_output_json}\n\n"
-            "Explain why the agent selected this action and provide execution guidance "
-            "that strictly follows the agent’s decision."
+    ("system", system_instruction),
+    (
+        "human",
+        f"""
+    Here is the system output in JSON:
+    {ml_output_json}
+
+    Respond using EXACTLY this format:
+
+    WHY THIS ACTION (max 2 bullet points):
+    - ...
+    - ...
+
+    NEXT STEPS (max 4 bullet points):
+    - Start each bullet with a strong action verb
+    - Include timing if applicable
+    - Each bullet must be one sentence only
+    """
         ),
     ]
 
@@ -246,5 +265,5 @@ if pred_button:
     st.write(f"**Priority:** {agent_decision['priority']}")
     st.write(f"**Follow-up Window:** {agent_decision['follow_up_window']}")
 
-    st.subheader("LLM Explanation & Recommendations")
+    st.subheader("Recommendations")
     st.write(ai_msg.content)
