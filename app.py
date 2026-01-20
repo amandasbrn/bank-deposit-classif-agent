@@ -125,15 +125,17 @@ llm = ChatGoogleGenerativeAI(
     )
 
 system_instruction = """
-You are an AI assistant helping a bank’s marketing team understand a predictive model for term deposit subscription.
-The model outputs a probability that a customer will subscribe.
+You are an AI assistant helping a bank’s marketing team understand a predictive system for term deposit subscription.
+
+The outreach action has ALREADY been selected by a decision agent.
+You must NOT change or suggest a different action.
+
 Your job is to:
+- Explain in simple, non-technical language why this action was chosen
+- Support the agent’s decision using customer context and model output
+- Provide 3–5 concrete execution tips that align with the chosen action
 
-Explain in simple, non-technical language why the model predicted this outcome.
-
-Suggest 3–5 concrete actions the bank staff could take next (channel, timing, offer).
-
-Be concise, structured, and avoid exposing internal model details (no weights, no probabilities unless provided).
+Be concise, structured, and avoid exposing internal model details.
 """
 
 top_features = [
@@ -143,6 +145,40 @@ top_features = [
     }
     for _, row in feat_imp.iterrows()
 ]
+
+# === DECISION AGENT (RULE-BASED) ===
+def marketing_decision_agent(probability, poutcome_success, duration, was_contacted_before):
+    # Default decision
+    decision = {
+        "action": "do_not_contact",
+        "priority": "low",
+        "follow_up_window": None,
+        "reason": "low_probability"
+    }
+
+    # High confidence customers
+    if probability >= 0.6:
+        decision["action"] = "call"
+        decision["priority"] = "high"
+        decision["follow_up_window"] = "24-48 hours"
+        decision["reason"] = "high_subscription_probability"
+
+    # Medium confidence
+    elif 0.4 <= probability < 0.6:
+        decision["action"] = "email"
+        decision["priority"] = "medium"
+        decision["follow_up_window"] = "2-3 days"
+        decision["reason"] = "medium_subscription_probability"
+
+    # Escalation rules
+    if poutcome_success == 1:
+        decision["priority"] = "high"
+        decision["reason"] += "_previous_success"
+
+    if duration > 300:
+        decision["reason"] += "_high_engagement"
+
+    return decision
 
 # === PREDICTION + LLM FLOW ===
 if pred_button:
@@ -154,13 +190,19 @@ if pred_button:
         st.success(f"This customer is likely to subscribe. Probability: {y_proba:.2f}")
     else:
         st.warning(f"This customer is unlikely to subscribe. Probability: {y_proba:.2f}")
+    
+    agent_decision = marketing_decision_agent(
+    probability=y_proba,
+    poutcome_success=poutcome_success,
+    duration=duration,
+    was_contacted_before=was_contacted_before)
 
     # ---- Build ml_output payload for LLM ----
     ml_output = {
         "prediction": int(y_pred),  # 0 or 1
         "prediction_label": "subscribe" if y_pred == 1 else "not_subscribe",
         "probability": y_proba,
-
+        "agent_decision": agent_decision,
         "top_features": top_features,
 
         "input_features": {
@@ -177,25 +219,32 @@ if pred_button:
     }
 
     ml_output_json = json.dumps(ml_output, ensure_ascii=False)
-
+    
     # ---- LLM explainer ----
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         api_key=api_token,
-        temperature=0.3,
+        temperature=0.3
     )
 
     messages = [
         ("system", system_instruction),
         (
             "human",
-            "Here is the model output for a customer in JSON format:\n\n"
+            "Below is the output from a predictive system and a decision agent.\n\n"
             f"{ml_output_json}\n\n"
-            "Based on this, explain in simple terms why the model thinks this customer will or "
-            "will not subscribe, and suggest 3–5 concrete marketing actions the bank could take."
+            "Explain why the agent selected this action and provide execution guidance "
+            "that strictly follows the agent’s decision."
         ),
     ]
 
+
     ai_msg = llm.invoke(messages)
+
+    st.subheader("Agent Decision")
+    st.write(f"**Action:** {agent_decision['action'].upper()}")
+    st.write(f"**Priority:** {agent_decision['priority']}")
+    st.write(f"**Follow-up Window:** {agent_decision['follow_up_window']}")
+
     st.subheader("LLM Explanation & Recommendations")
     st.write(ai_msg.content)
