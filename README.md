@@ -49,7 +49,6 @@ This project addresses the gap by:
 ## 🎯 Focus Areas
 - Supervised Learning (Classification)
 - Agentic AI (Decision Policies)
-- Human-in-the-Loop AI Systems
 - Explainable AI
 - Applied AI for Business Decision Support
 
