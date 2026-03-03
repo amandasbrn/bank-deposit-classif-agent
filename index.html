@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bank Deposit Decision Support</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Bank Deposit Predictor</p>
+        <h1>AI-powered outreach recommendations for term deposit campaigns.</h1>
+        <p class="lede">
+          Submit a customer profile to estimate subscription likelihood, choose
+          the next outreach action, and generate concise execution guidance.
+        </p>
+      </section>
+
+      <section class="panel">
+        <form id="prediction-form" class="form-grid">
+          <label>
+            <span>Previous outreach result</span>
+            <select name="poutcome_success" required>
+              <option value="1">Successfully converted</option>
+              <option value="0">Not successful</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Occupation</span>
+            <select id="job" name="job" required></select>
+          </label>
+
+          <label>
+            <span>Latest education</span>
+            <select id="education" name="education" required></select>
+          </label>
+
+          <label>
+            <span>Last interaction duration (seconds)</span>
+            <input id="duration" name="duration" type="number" min="0" required />
+            <small id="duration-range"></small>
+          </label>
+
+          <label>
+            <span>Contacted before</span>
+            <select name="was_contacted_before" required>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Contact channel</span>
+            <select name="contact_cellular" required>
+              <option value="1">Cellular</option>
+              <option value="0">Other</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Balance</span>
+            <input id="balance" name="balance" type="number" required />
+            <small id="balance-range"></small>
+          </label>
+
+          <label>
+            <span>Previous campaign contacts</span>
+            <input id="previous" name="previous" type="number" min="0" required />
+            <small id="previous-range"></small>
+          </label>
+
+          <button id="submit-button" type="submit">Get prediction</button>
+        </form>
+      </section>
+
+      <section id="status" class="status" aria-live="polite"></section>
+
+      <section id="results" class="results hidden">
+        <article class="result-card">
+          <p class="result-label">Prediction</p>
+          <h2 id="prediction-label"></h2>
+          <p id="prediction-probability" class="metric"></p>
+        </article>
+
+        <article class="result-card">
+          <p class="result-label">Agent decision</p>
+          <dl class="decision-grid">
+            <div>
+              <dt>Action</dt>
+              <dd id="decision-action"></dd>
+            </div>
+            <div>
+              <dt>Priority</dt>
+              <dd id="decision-priority"></dd>
+            </div>
+            <div>
+              <dt>Follow-up</dt>
+              <dd id="decision-window"></dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="result-card full-width">
+          <p class="result-label">Recommendations</p>
+          <pre id="recommendations"></pre>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
