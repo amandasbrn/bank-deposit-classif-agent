@@ -10,6 +10,7 @@ import pandas as pd
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "adaboost_trained.pkl"
 FEATURE_PATH = BASE_DIR / "selected_feature.pkl"
+JOB_EDU_ENCODER_PATH = BASE_DIR / "job_edu_encoder.pkl"
 FEATURE_IMPORTANCE_PATH = BASE_DIR / "adaboost_feature_imp.csv"
 DATA_PATH = BASE_DIR / "data_model.csv"
 
@@ -49,6 +50,11 @@ def load_selected_features():
 
 
 @lru_cache(maxsize=1)
+def load_job_edu_encoder():
+    return joblib.load(JOB_EDU_ENCODER_PATH)
+
+
+@lru_cache(maxsize=1)
 def load_feature_importance():
     frame = pd.read_csv(FEATURE_IMPORTANCE_PATH)
     return [
@@ -58,13 +64,6 @@ def load_feature_importance():
 
 
 @lru_cache(maxsize=1)
-def job_education_lookup():
-    data = load_data().copy()
-    data["job_edu_key"] = data["job"].astype(str) + "_" + data["education"].astype(str)
-    grouped = data.groupby("job_edu_key", as_index=False)["deposit"].mean()
-    return dict(zip(grouped["job_edu_key"], grouped["deposit"]))
-
-
 def metadata():
     data = load_data()
     jobs = sorted(data["job"].dropna().unique().tolist())
@@ -135,22 +134,26 @@ def build_model_input(payload):
     job = str(payload["job"]).strip()
     education = str(payload["education"]).strip()
     key = f"{job}_{education}"
-    lookup = job_education_lookup()
-    if key not in lookup:
+    available_options = metadata()["educationByJob"].get(job, [])
+    if education not in available_options:
         raise ValueError(f"Unsupported job and education combination: {key}")
+
+    encoded = load_job_edu_encoder().transform(
+        pd.DataFrame({"job_edu": [key]})
+    )["job_edu"].iloc[0]
 
     frame = pd.DataFrame(
         {
             "duration": [float(payload["duration"])],
             "poutcome_success": [int(payload["poutcome_success"])],
-            "job_edu": [float(lookup[key])],
+            "job_edu": [float(encoded)],
             "was_contacted_before": [int(payload["was_contacted_before"])],
             "contact_cellular": [int(payload["contact_cellular"])],
             "balance": [float(payload["balance"])],
             "previous": [int(payload["previous"])],
         }
     )
-    return frame[load_selected_features()], float(lookup[key])
+    return frame[load_selected_features()], float(encoded)
 
 
 def generate_explanation(ml_output):

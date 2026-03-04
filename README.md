@@ -2,9 +2,9 @@
 
 This project is now structured for Vercel:
 
-- Static frontend: [`index.html`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/index.html)
-- Python API: [`api/index.py`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/api/index.py)
-- Shared inference logic: [`api/_shared.py`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/api/_shared.py)
+- Static frontend: `index.html`
+- Python API: `api/index.py`
+- Shared inference logic: `api/_shared.py`
 
 ## Local development
 
@@ -20,13 +20,13 @@ Run the API locally:
 flask --app api.index run --debug
 ```
 
-Then open [`index.html`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/index.html) through a simple static server, for example:
+Then open `index.html` through a simple static server, for example:
 
 ```bash
 python -m http.server 3000
 ```
 
-If you use a separate static server, point the frontend at the Flask API origin or proxy `/api/*` to the Flask server.
+If you use a separate static server, set `data-api-base` on the `<body>` element in `index.html` to your Flask origin, for example `http://127.0.0.1:5000`.
 
 ## Deploy to Vercel
 
@@ -39,8 +39,8 @@ If you use a separate static server, point the frontend at the Flask API origin 
 Vercel will:
 
 - Serve the static frontend from the repository root
-- Route `/api/*` to the Flask serverless function via [`vercel.json`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/vercel.json)
-- Install Python dependencies from [`requirements.txt`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/requirements.txt)
+- Route `/api/*` to the Flask serverless function via `vercel.json`
+- Install Python dependencies from `requirements.txt`
 
 ## API contract
 
@@ -71,6 +71,6 @@ Example body:
 
 ## Notes
 
-- The original Streamlit app remains in [`app.py`](/Users/diraamanda/Documents/GitHub/bank-fraud-classif-llm/app.py), but Vercel uses the new static frontend and API.
-- `job_edu_encoder.pkl` is no longer required at runtime. The API derives the `job_edu` value from the dataset to avoid the extra `category_encoders` dependency.
+- This repository is now Vercel-first: the deployable app is the static frontend plus the Python API.
+- `job_edu_encoder.pkl` is required at runtime so predictions match the training-time encoding.
 - If `api_key` is missing, predictions still work and the API returns a fallback recommendation message instead of Gemini output.

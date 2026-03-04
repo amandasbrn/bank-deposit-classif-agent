@@ -4,6 +4,7 @@ const educationSelect = document.getElementById("education");
 const statusNode = document.getElementById("status");
 const resultsNode = document.getElementById("results");
 const submitButton = document.getElementById("submit-button");
+const apiBase = document.body.dataset.apiBase || "";
 
 let metadata = null;
 
@@ -41,7 +42,7 @@ function populateEducation() {
 
 async function loadMetadata() {
   setStatus("Loading model metadata...");
-  const response = await fetch("/api/metadata");
+  const response = await fetch(`${apiBase}/api/metadata`);
   if (!response.ok) {
     throw new Error("Failed to load metadata");
   }
@@ -74,7 +75,7 @@ form.addEventListener("submit", async (event) => {
   const payload = Object.fromEntries(formData.entries());
 
   try {
-    const response = await fetch("/api/predict", {
+    const response = await fetch(`${apiBase}/api/predict`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
