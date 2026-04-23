@@ -1,7 +1,8 @@
-category-encoders>=2.6.0,<2.8.0
-google-genai==1.5.0
-joblib==1.4.2
-pandas==2.2.3
+category-encoders
+google-genai
+joblib
+numpy
+pandas
 python-dotenv
 scikit-learn==1.7.0
 streamlit
