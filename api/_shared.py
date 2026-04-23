@@ -5,9 +5,10 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 MODEL_PATH = BASE_DIR / "adaboost_trained.pkl"
 FEATURE_PATH = BASE_DIR / "selected_feature.pkl"
 JOB_EDU_ENCODER_PATH = BASE_DIR / "job_edu_encoder.pkl"
