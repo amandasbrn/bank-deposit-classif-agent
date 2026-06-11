@@ -1,15 +1,25 @@
 # Bank Deposit Decision Support
 
-This project predicts whether a banking customer is likely to subscribe to a term deposit product.
+This app helps bank marketing teams decide how to follow up with customers for term deposit campaigns.
 
-The Streamlit UI is currently under maintenance, but the repository is already set up for Streamlit deployment.
+It uses a trained machine learning model to estimate subscription likelihood, then applies simple decision rules to suggest the next outreach action.
 
-## Files
+The Streamlit UI is currently under maintenance, but the project is already set up for Streamlit deployment.
 
-- `app.py`: Streamlit entrypoint
-- `api/_shared.py`: prediction and recommendation logic
-- `*.pkl`: trained model files
-- `data_model.csv`: data used for form metadata
+## Features
+
+- Predicts whether a customer is likely to subscribe to a term deposit
+- Accepts campaign and customer inputs such as job, education, balance, contact history, and interaction duration
+- Recommends a follow-up action such as `call`, `email`, or `do_not_contact`
+- Assigns a priority level and follow-up window
+- Generates short, readable recommendations for business users
+
+## Project files
+
+- `app.py`: Streamlit app
+- `api/_shared.py`: model loading, prediction, and recommendation logic
+- `*.pkl`: trained model artifacts
+- `data_model.csv`: source data for valid input options and ranges
 
 ## Run locally
 
