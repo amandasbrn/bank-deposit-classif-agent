@@ -1,76 +1,39 @@
 # Bank Deposit Decision Support
 
-This project is now structured for Vercel:
+This repository is a single Streamlit app for predicting whether a banking customer is likely to subscribe to a term deposit product.
 
-- Static frontend: `index.html`
-- Python API: `api/index.py`
-- Shared inference logic: `api/_shared.py`
+## Project structure
 
-## Local development
+- `app.py`: Streamlit entrypoint
+- `api/_shared.py`: shared model loading, feature preparation, prediction, and recommendation logic
+- `*.pkl`: trained model artifacts required at runtime
+- `data_model.csv`: source data used to build form metadata such as valid jobs and education options
 
-Install the Python dependencies:
+## Run locally
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the API locally:
+Start the app:
 
 ```bash
-flask --app api.index run --debug
+streamlit run app.py
 ```
 
-Then open `index.html` through a simple static server, for example:
-
-```bash
-python -m http.server 3000
-```
-
-If you use a separate static server, set `data-api-base` on the `<body>` element in `index.html` to your Flask origin, for example `http://127.0.0.1:5000`.
-
-## Deploy to Vercel
+## Deploy to Streamlit Community Cloud
 
 1. Push this repository to GitHub.
-2. Import the repository into Vercel.
-3. Set the project root to this repository.
-4. Add environment variable `api_key` if you want Gemini-generated recommendations.
-5. Deploy.
+2. In Streamlit Community Cloud, create a new app from the repository.
+3. Set the main file path to `app.py`.
+4. Deploy.
 
-Vercel will:
-
-- Serve the static frontend from the repository root
-- Route `/api/*` to the Flask serverless function via `vercel.json`
-- Install Python dependencies from `requirements.txt`
-
-## API contract
-
-`GET /api/metadata`
-
-Returns:
-
-- Available job options
-- Education options by job
-- Observed numeric ranges for the form
-
-`POST /api/predict`
-
-Example body:
-
-```json
-{
-  "job": "technician",
-  "education": "secondary",
-  "duration": 117,
-  "poutcome_success": 0,
-  "was_contacted_before": 0,
-  "contact_cellular": 1,
-  "balance": 7,
-  "previous": 0
-}
-```
+No secrets or external AI configuration are required. The app generates recommendations locally, so deployment is just the code plus the model files already in this repo.
 
 ## Notes
 
-- This repository is now Vercel-first: the deployable app is the static frontend plus the Python API.
-- `job_edu_encoder.pkl` is required at runtime so predictions match the training-time encoding.
-- If `api_key` is missing, predictions still work and the API returns a fallback recommendation message instead of Gemini output.
+- `runtime.txt` pins Python 3.11 for compatibility with the current dependency set.
+- `job_edu_encoder.pkl`, `selected_feature.pkl`, and `adaboost_trained.pkl` must stay in the repository root for inference to work.
+- The app uses the trained model plus deterministic recommendation rules, which makes hosted deployment simpler and more reliable.

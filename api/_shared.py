@@ -1,38 +1,15 @@
-import json
-import os
 from functools import lru_cache
 from pathlib import Path
 
 import joblib
 import pandas as pd
-from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
 MODEL_PATH = BASE_DIR / "adaboost_trained.pkl"
 FEATURE_PATH = BASE_DIR / "selected_feature.pkl"
 JOB_EDU_ENCODER_PATH = BASE_DIR / "job_edu_encoder.pkl"
 FEATURE_IMPORTANCE_PATH = BASE_DIR / "adaboost_feature_imp.csv"
 DATA_PATH = BASE_DIR / "data_model.csv"
-
-
-SYSTEM_INSTRUCTION = """
-You are an AI assistant supporting a bank's marketing operations team.
-
-The outreach action has ALREADY been selected by a decision agent.
-You must NOT change or suggest a different action.
-
-Your role is to:
-- Briefly explain why this action was chosen (1-2 sentences)
-- Provide concise, action-oriented execution guidance
-
-Style rules:
-- Write for busy professionals
-- Use short, direct sentences
-- Focus on what to do and when
-- Avoid unnecessary background or storytelling
-- No emojis, no marketing fluff
-""".strip()
 
 
 @lru_cache(maxsize=1)
@@ -157,41 +134,79 @@ def build_model_input(payload):
     return frame[load_selected_features()], float(encoded)
 
 
-def generate_explanation(ml_output):
-    api_key = os.getenv("api_key")
-    if not api_key:
-        return (
-            "WHY THIS ACTION:\n"
-            "- Explanation unavailable because the Gemini API key is not configured.\n\n"
-            "NEXT STEPS:\n"
-            "- Add the `api_key` environment variable in Vercel before requesting AI guidance."
+def build_recommendations(ml_output):
+    decision = ml_output["agent_decision"]
+    input_features = ml_output["input_features"]
+    probability = ml_output["probability"]
+
+    why_lines = []
+    if decision["action"] == "call":
+        why_lines.append(
+            f"The model estimates a {probability:.0%} subscription likelihood, so this customer is worth direct follow-up."
+        )
+    elif decision["action"] == "email":
+        why_lines.append(
+            f"The model estimates a {probability:.0%} subscription likelihood, which supports a lower-cost email follow-up."
+        )
+    else:
+        why_lines.append(
+            f"The model estimates a {probability:.0%} subscription likelihood, so active outreach should stay low priority."
         )
 
-    from google import genai
+    if input_features["poutcome_success"] == 1:
+        why_lines.append(
+            "A previous successful outreach increases confidence and justifies faster follow-up."
+        )
+    elif input_features["duration"] > 300:
+        why_lines.append(
+            "The last interaction was relatively long, which signals stronger engagement than a short contact."
+        )
+    elif input_features["previous"] > 0:
+        why_lines.append(
+            "The customer has prior campaign history, which gives the team useful context for the next touchpoint."
+        )
 
-    client = genai.Client(api_key=api_key)
-    prompt = f"""
-Here is the system output in JSON:
-{json.dumps(ml_output, ensure_ascii=False)}
+    next_steps = []
+    if decision["action"] == "call":
+        next_steps.append(
+            f"Call the customer within {decision['follow_up_window']} while the signal is still fresh."
+        )
+        next_steps.append(
+            "Lead with the product fit and reference the customer's recent engagement."
+        )
+        if input_features["poutcome_success"] == 1:
+            next_steps.append(
+                "Acknowledge the previous positive response and move quickly to a clear offer."
+            )
+        if input_features["was_contacted_before"] == 0:
+            next_steps.append(
+                "Keep the first outreach concise and confirm the best time for a longer follow-up."
+            )
+    elif decision["action"] == "email":
+        next_steps.append(
+            f"Send a targeted email within {decision['follow_up_window']} with one clear call to action."
+        )
+        next_steps.append(
+            "Use a concise subject line and highlight the main deposit benefit early in the message."
+        )
+        next_steps.append(
+            "Track opens or replies before deciding whether the lead should move to phone outreach."
+        )
+    else:
+        next_steps.append(
+            "Do not prioritize manual outreach for this customer in the current campaign."
+        )
+        next_steps.append(
+            "Keep the customer in a lower-cost nurture segment until a stronger signal appears."
+        )
+        if input_features["previous"] > 0:
+            next_steps.append(
+                "Review prior campaign notes before reintroducing the lead to a future cycle."
+            )
 
-Respond using EXACTLY this format:
-
-WHY THIS ACTION (max 2 bullet points):
-- ...
-- ...
-
-NEXT STEPS (max 4 bullet points):
-- Start each bullet with a strong action verb
-- Include timing if applicable
-- Each bullet must be one sentence only
-""".strip()
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config={"system_instruction": SYSTEM_INSTRUCTION, "temperature": 0.3},
-    )
-    return response.text
+    return "WHY THIS ACTION:\n" + "\n".join(
+        f"- {line}" for line in why_lines[:2]
+    ) + "\n\nNEXT STEPS:\n" + "\n".join(f"- {line}" for line in next_steps[:4])
 
 
 def predict(payload):
@@ -228,5 +243,5 @@ def predict(payload):
         "predictionLabel": "Likely to subscribe" if prediction == 1 else "Unlikely to subscribe",
         "probability": probability,
         "agentDecision": agent_decision,
-        "recommendations": generate_explanation(ml_output),
+        "recommendations": build_recommendations(ml_output),
     }
